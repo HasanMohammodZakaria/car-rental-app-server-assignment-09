@@ -48,6 +48,12 @@ async function run() {
             res.send(result);
         });
 
+        app.get('/available-cars', async (req, res) => {
+            const cursor = carsCollection.find().limit(6)
+            const result = await cursor.toArray()
+            res.send(result)
+        })
+
         app.get('/cars/:carId', async (req, res) => {
             const { carId } = req.params;
             //console.log(carId);
