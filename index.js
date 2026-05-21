@@ -36,6 +36,7 @@ async function run() {
         const db = client.db('car-rental');
 
         const carsCollection = db.collection('cars');
+        const bookingCollection = db.collection('bookingsData')
 
         app.get('/', (req, res) => {
             res.send('Car Rental Running')
@@ -45,13 +46,13 @@ async function run() {
             const cursor = carsCollection.find();
             const result = await cursor.toArray();
             //console.log(result);
-            res.send(result);
+            res.json(result);
         });
 
         app.get('/available-cars', async (req, res) => {
             const cursor = carsCollection.find().limit(6)
             const result = await cursor.toArray()
-            res.send(result)
+            res.json(result)
         })
 
         app.get('/cars/:carId', async (req, res) => {
@@ -59,7 +60,27 @@ async function run() {
             //console.log(carId);
             const query = { _id: new ObjectId(carId) }
             const result = await carsCollection.findOne(query)
-            res.send(result);
+            res.json(result);
+        })
+
+        app.post('/cars', async (req, res) => {
+            const carData = req.body
+            console.log(carData);
+            const result = await carsCollection.insertOne(carData)
+            res.json(result)
+        })
+
+        app.get('/booking/:bookedById', async (req, res) => {
+            const { bookedById } = req.params
+            const result = await bookingCollection.find({ bookedById }).toArray()
+            res.json(result)
+
+        })
+
+        app.post('/booking', async (req, res) => {
+            const bookingData = req.body
+            const result = await bookingCollection.insertOne(bookingData)
+            res.json(result)
         })
 
 
