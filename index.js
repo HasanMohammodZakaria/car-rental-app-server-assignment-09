@@ -18,13 +18,15 @@ app.use(express.json());
 
 const uri = process.env.MONGODB_URI
 
-const client = new MongoClient(uri, {
-    serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-    }
-});
+// const client = new MongoClient(uri, {
+//     serverApi: {
+//         version: ServerApiVersion.v1,
+//         strict: true,
+//         deprecationErrors: true,
+//     }
+// });
+
+const client = new MongoClient(uri);
 
 async function run() {
     try {
@@ -42,12 +44,41 @@ async function run() {
             res.send('Car Rental Running')
         })
 
+        app.get('/cars/types', async (req, res) => {
+            try {
+                console.log("API hit /cars/types")
+                const types = await carsCollection.distinct('carType');
+                console.log("TYPES:", types);
+                res.json(types);
+            } catch (error) {
+                console.error("REAL ERROR:", error);
+                res.status(500).json({ message: "Server Error" })
+            }
+        })
+
+
         app.get('/cars', async (req, res) => {
-            const cursor = carsCollection.find();
-            const result = await cursor.toArray();
-            //console.log(result);
-            res.json(result);
+
+            try {
+                const { search, type } = req.query;
+                const query = {};
+                if (search) {
+                    query.carName = { $regex: search, $options: "i" };
+                }
+
+                if (type) {
+                    query.carType = type;
+                }
+                const cursor = carsCollection.find(query);
+                const result = await cursor.toArray();
+                //console.log(result);
+                res.json(result);
+
+            } catch (error) {
+                res.status(500).json({ message: "Server Error" })
+            }
         });
+
 
         app.get('/available-cars', async (req, res) => {
             const cursor = carsCollection.find().limit(6)
@@ -63,11 +94,21 @@ async function run() {
             res.json(result);
         })
 
-        app.post('/cars', async (req, res) => {
-            const carData = req.body
-            console.log(carData);
-            const result = await carsCollection.insertOne(carData)
-            res.json(result)
+        app.get('/my-added-cars/:userId', async (req, res) => {
+            const { userId } = req.params;
+            const result = await carsCollection.find({ addedBy: userId }).toArray();
+            res.json(result);
+        })
+
+        app.post("/cars", async (req, res) => {
+            try {
+                const carData = req.body;
+                const result = await carsCollection.insertOne(carData);
+                res.json(result)
+
+            } catch (error) {
+                res.status(500).json({ message: "Server Error" });
+            }
         })
 
         app.get('/booking/:bookedById', async (req, res) => {
@@ -77,12 +118,38 @@ async function run() {
 
         })
 
+
         app.post('/booking', async (req, res) => {
             const bookingData = req.body
-            const result = await bookingCollection.insertOne(bookingData)
+            const { carId, ...rest } = bookingData
+            const result = await bookingCollection.insertOne({ carId, ...rest })
+
+            const updateResult = await carsCollection.updateOne(
+                { _id: new ObjectId(carId) },
+                { $inc: { bookedCount: 1 } }
+
+            )
+
+            console.log('updateResult:', updateResult);
             res.json(result)
         })
 
+        app.patch('/cars/:id', async (req, res) => {
+            const { id } = req.params
+            const updatedCar = req.body
+            const result = await carsCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: updatedCar }
+
+            )
+            res.json(result)
+        })
+
+        app.delete('/cars/:id', async (req, res) => {
+            const { id } = req.params
+            const result = await carsCollection.deleteOne({ _id: new ObjectId(id) })
+            res.json(result);
+        })
 
 
 
