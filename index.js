@@ -11,7 +11,10 @@ const port = process.env.PORT || 8008;
 
 
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_URL,
+    credential: true,
+}));
 app.use(express.json());
 
 
@@ -28,7 +31,7 @@ const client = new MongoClient(uri, {
 });
 
 const jwks = createRemoteJWKSet(
-    new URL('http://localhost:3000/api/auth/jwks')
+    new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
 )
 
 const verifyToken = async (req, res, next) => {
@@ -59,7 +62,7 @@ const verifyToken = async (req, res, next) => {
 async function run() {
     try {
 
-        await client.connect();
+        // await client.connect();
 
 
         const db = client.db('car-rental');
@@ -245,7 +248,9 @@ async function run() {
     }
 }
 run().catch(console.dir);
-
+app.get('/', (req, res) => {
+    res.send('Server is running fine!');
+})
 
 // server
 
